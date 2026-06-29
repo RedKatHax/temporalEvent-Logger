@@ -4,7 +4,7 @@
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createEvent } from "@/lib/events";
 import { deriveState, formatDuration } from "@/lib/derive";
-import { appendEvent, clearEvents, importEvents, loadEvents } from "@/lib/storage";
+import { appendEvent, importEvents, loadEvents } from "@/lib/storage";
 import { EventMetadata, Rating, TaskType, WorkEvent } from "@/types/events";
 import { exportEventsToCSV, exportEventsToJSON, exportFeaturesToCSV } from "@/lib/export";
 
@@ -256,34 +256,17 @@ export default function HomePage() {
         return;
       }
 
-      const mode = window.confirm(
-        "Append imported events to the existing local log? Choose Cancel to replace this device's local log instead."
-      )
-        ? "append"
-        : "replace";
-
-      const next = importEvents(parsed, mode);
+      const next = importEvents(parsed);
       setEvents(next);
       setShowSwitchForm(false);
       handleCancelEdit();
-      window.alert(`Imported ${parsed.length} raw event(s). Active local log now has ${next.length} event(s).`);
+      window.alert(`Imported ${parsed.length} raw event(s). Duplicate IDs and timestamp mismatches were ignored so the log remains append-only. Active local log now has ${next.length} event(s).`);
     } catch (error) {
       console.error("Import failed:", error);
       window.alert("Import failed: could not parse this JSON file.");
     }
   }
 
-  function handleClearAll() {
-    const confirmed = window.confirm(
-      "Clear all local event history from this device? Export first if you want to keep a copy."
-    );
-    if (!confirmed) return;
-
-    clearEvents();
-    setEvents([]);
-    setShowSwitchForm(false);
-    handleCancelEdit();
-  }
 
   function openEditEvent(evt: WorkEvent) {
     setEditingEventId(evt.event_id);
@@ -347,6 +330,7 @@ export default function HomePage() {
       <h1>Temporal Event Logger</h1>
       <p style={{ color: "#555" }}>
         Local-first event capture with metadata-aware exports for downstream feature extraction.
+        Event timestamps are created once, stored append-only, and locked against later edits.
       </p>
 
       <section style={{ border: "1px solid #ccc", borderRadius: 12, padding: 16, marginBottom: 16 }}>
@@ -400,7 +384,13 @@ export default function HomePage() {
           <button onClick={handleStartBreak} style={{ ...actionButtonStyle, opacity: canStartBreak ? 1 : 0.4, pointerEvents: canStartBreak ? "auto" : "none" }}>Start Break</button>
           <button onClick={handleEndBreak} style={{ ...actionButtonStyle, opacity: canEndBreak ? 1 : 0.4, pointerEvents: canEndBreak ? "auto" : "none" }}>End Break</button>
           <button onClick={openSwitchTaskForm} style={actionButtonStyle}>Switch Task</button>
-          <button onClick={handleClearAll} style={actionButtonStyle}>Clear All</button>
+          <button
+            disabled
+            style={{ ...actionButtonStyle, opacity: 0.4, cursor: "not-allowed" }}
+            title="Disabled: the local event log is append-only"
+          >
+            Clear All Locked
+          </button>
         </div>
 
         {showSwitchForm ? (
@@ -451,6 +441,14 @@ export default function HomePage() {
 
                 {editingEventId === evt.event_id ? (
                   <div style={{ marginTop: 8 }}>
+                    <label style={{ display: "block", marginBottom: 6 }}>Timestamp (locked)</label>
+                    <input
+                      value={new Date(evt.ts_unix_ms).toLocaleString()}
+                      readOnly
+                      aria-readonly="true"
+                      title="Timestamps are immutable; append a correction for metadata only."
+                      style={{ ...inputStyle, background: "#f2f2f2", color: "#555", cursor: "not-allowed" }}
+                    />
                     <label style={{ display: "block", marginBottom: 6 }}>Project</label>
                     <input value={editProjectId} onChange={(e) => setEditProjectId(e.target.value)} style={inputStyle} />
                     <label style={{ display: "block", marginBottom: 6 }}>Task</label>
