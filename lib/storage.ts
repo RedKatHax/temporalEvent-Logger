@@ -41,10 +41,15 @@ function readRawEvents(): unknown[] {
   return Array.isArray(parsed) ? parsed : [];
 }
 
+function hasConsistentTimestamp(evt: WorkEvent): boolean {
+  return new Date(evt.ts_iso).getTime() === evt.ts_unix_ms;
+}
+
 export function normalizeEvents(rawEvents: unknown[]): WorkEvent[] {
   const byId = new Map<string, WorkEvent>();
 
   for (const evt of rawEvents.map(migrateEvent).filter((evt): evt is WorkEvent => evt !== null)) {
+    if (!hasConsistentTimestamp(evt) || byId.has(evt.event_id)) continue;
     byId.set(evt.event_id, evt);
   }
 
@@ -75,14 +80,14 @@ export function saveEvents(events: WorkEvent[]): void {
   }
 }
 
-export function importEvents(rawEvents: unknown[], mode: "append" | "replace" = "append"): WorkEvent[] {
+export function importEvents(rawEvents: unknown[]): WorkEvent[] {
   const imported = normalizeEvents(rawEvents).map((evt) => ({
     ...evt,
     source: evt.source === "manual" ? "imported" : evt.source,
     sync_state: "pending" as const,
   }));
 
-  const next = mode === "replace" ? imported : normalizeEvents([...loadEvents(), ...imported]);
+  const next = normalizeEvents([...loadEvents(), ...imported]);
   saveEvents(next);
   return next;
 }
@@ -96,6 +101,5 @@ export function appendEvent(event: WorkEvent): WorkEvent[] {
 
 export function clearEvents(): void {
   if (typeof window === "undefined") return;
-  window.localStorage.removeItem(STORAGE_KEY);
-  window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+  console.warn("Clear all is disabled because the local event log is append-only. Export data before resetting browser storage manually.");
 }
