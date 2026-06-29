@@ -4,6 +4,16 @@ A local-first TypeScript event logging prototype for capturing structured tempor
 
 This project is a clean-room portfolio artifact. It is designed to demonstrate event-driven system design, temporal data modeling, local-first persistence, and downstream feature extraction without exposing proprietary systems or data.
 
+## GitHub Pages deployment
+
+This app is configured for static GitHub Pages deployment at:
+
+```text
+https://redkathax.github.io/temporalEvent-Logger/
+```
+
+Deployment is handled by `.github/workflows/deploy-pages.yml` using Next.js static export and the project base path `/temporalEvent-Logger`.
+
 ## What it demonstrates
 
 - Append-oriented event capture
